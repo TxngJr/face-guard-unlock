@@ -145,17 +145,29 @@ void sendPhoto(const String value) {
 
     int timeoutTimer = 1500;
     long startTimer = millis();
+    String responseHeader = "";
 
     while ((startTimer + timeoutTimer) > millis()) {
       Serial.print(".");
       delay(100);
       while (client.available()) {
         char c = client.read();
+        responseHeader += c;
         startTimer = millis();
       }
     }
 
-    Serial.println();
+    if (responseHeader.startsWith("HTTP/1.1")) {
+      int statusCode = responseHeader.substring(9, 12).toInt();
+      if (statusCode == 200 || 201) {
+        Serial.println("Request successful!");
+      } else {
+        Serial.println("Request failed with status code: " + String(statusCode));
+      }
+    } else {
+      Serial.println("Invalid HTTP response");
+    }
+
     client.stop();
   } else {
     Serial.println("Connection to " + String(serverName) + " failed.");

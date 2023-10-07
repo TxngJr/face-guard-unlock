@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>RegisterFace</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <form action="/register_face_api" method="post" enctype="multipart/form-data">
+        <div>
+            <label for="StudentID">StudentID:</label>
+            <input type="number" id="StudentID" name="StudentID">
+        </div>
+        <div>
+            <label for="imageFile">StudentID:</label>
+            <input type="file" id="imageFile" name="imageFile" accept="image/jpeg">
+        </div>
+        <div>
+            <input type="submit">
+        </div>
+   </form>
+<script>
+        window.onload = function() {
+        let isAleart = "{{ status }}";
+            if (isAleart == "True") {
+                alert("uploaded successfully");
+            }else if (isAleart == "False"){
+                alert("upload failed");
+            }
+        };
+    </script>
+</body>
+</html>

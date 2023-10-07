@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport"
+          content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Login</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    {% include 'navbar.html' %}
+    <form action="/login_api" method="post">
+       <div>
+            <label for="username">Username:</label>
+            <input type="text" id="username" name="username" required>
+        </div>
+        <div>
+            <label for="password">Password:</label>
+            <input type="password" id="password" name="password" required>
+        </div>
+        <div>
+            <input type="submit">
+        </div>
+   </form>
+    <script>
+        window.onload = function() {
+        let isAleart = "{{ authentication_message }}";
+            if (isAleart == "True") {
+                alert("Pls Login First");
+            }else if (isAleart == "False"){
+                alert("username or password wrong");
+            }
+        };
+    </script>
+</body>
+</html>

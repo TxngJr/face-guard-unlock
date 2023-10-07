@@ -6,8 +6,8 @@
 
 const char* ssid = "TongTey 2.4G";
 const char* password = "0943712194";
-const char* serverName = "swapsjobs.3bbddns.com";
-const int serverPort = 36880;
+const char* serverName = "192.168.1.45";
+const int serverPort = 25565;
 
 WiFiClient client;
 
@@ -87,18 +87,17 @@ void setup() {
     ESP.restart();
   }
 
-  sendPhoto("C");
 }
 
 void loop() {
   unsigned long currentMillis = millis();
   if (currentMillis - previousMillis >= timerInterval) {
-    sendPhoto("R");
+    sendPhoto();
     previousMillis = currentMillis;
   }
 }
 
-void sendPhoto(const String value) {
+void sendPhoto() {
   camera_fb_t* fb = esp_camera_fb_get();
   if (!fb) {
     Serial.println("Camera capture failed");
@@ -117,12 +116,7 @@ void sendPhoto(const String value) {
     uint32_t extraLen = head.length() + tail.length();
     uint32_t totalLen = imageLen + extraLen;
 
-    if (value == "C") {
-      client.println("POST /checker HTTP/1.1");
-    } else if (value == "R") {
-      client.println("POST /uploader HTTP/1.1");
-    }
-
+    client.println("POST /check_face_api HTTP/1.1");
     client.println("Host: " + String(serverName));
     client.println("Content-Length: " + String(totalLen));
     client.println("Content-Type: multipart/form-data; boundary=Boundary");
@@ -159,7 +153,7 @@ void sendPhoto(const String value) {
 
     if (responseHeader.startsWith("HTTP/1.1")) {
       int statusCode = responseHeader.substring(9, 12).toInt();
-      if (statusCode == 200 || 201) {
+      if (statusCode == 200) {
         Serial.println("Request successful!");
       } else {
         Serial.println("Request failed with status code: " + String(statusCode));

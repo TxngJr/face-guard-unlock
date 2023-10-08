@@ -8,11 +8,11 @@ database = MongoClient('mongodb://localhost:27017/')['testkub']
 room_access_history = database.room_access_history
 
 face_recognition = SimpleFacerec()
-face_recognition.load_encoding_images("image/")
+face_recognition.load_encoding_images("static/images/")
 
 app = Flask(__name__)
 app.secret_key = '432rkjk34htht34f'
-app.config['UPLOAD_FOLDER'] = 'image/'
+app.config['UPLOAD_FOLDER'] = 'static/images/'
 
 
 @app.route("/login", methods=['GET'])
@@ -20,8 +20,8 @@ def login_page():
     is_admin = session.get("is_admin", False)
     if is_admin:
         return redirect("/room_access_history")
-    authentication_message = session.pop("authentication_message", "")
-    return render_template('login_page.html', authentication_message=authentication_message)
+    message = session.pop("message", False)
+    return render_template('login_page.html', message=message, is_admin=is_admin)
 
 
 @app.route("/login_api", methods=['POST'])
@@ -30,7 +30,7 @@ def login_api():
     if is_admin:
         return redirect("/room_access_history")
     if not request.form['username'] == "admin" or not request.form['password'] == "12345":
-        session['authentication_message'] = False
+        session['message'] = "Username or Password Wrong"
         return redirect("/login")
     session['is_admin'] = True
     return redirect("/room_access_history")
@@ -46,50 +46,71 @@ def logout_api():
 def room_access_history_page():
     is_admin = session.get("is_admin", False)
     if not is_admin:
-        session['authentication_message'] = True
+        session['message'] = "Please Login first"
         return redirect("/login")
     room_access_history_all = list(room_access_history.find({}))
-    if not room_access_history_all:
-        return make_response(jsonify({"message": "have somthing error"}))
-    return render_template('room_access_history_page.html', data=room_access_history_all)
+    message = session.pop("message", False)
+    return render_template('room_access_history_page.html', data=room_access_history_all, message=message)
 
 
 @app.route("/register_face", methods=['GET'])
 def register_face_page():
     is_admin = session.get("is_admin", False)
     if not is_admin:
-        session['authentication_message'] = True
+        session['message'] = "Please Login first"
         return redirect("/login")
-    status = session.pop('status', "")
-    return render_template('register_face_page.html', status=status)
+    message = session.pop("message", False)
+    image_list = [filename for filename in os.listdir('static/images') if filename.endswith('.jpg')]
+    return render_template('register_face_page.html', image_list=image_list, message=message)
 
 
 @app.route('/register_face_api', methods=['POST'])
 def register_face_api():
     is_admin = session.get("is_admin", False)
     if not is_admin:
-        session['authentication_message'] = True
+        session['message'] = "Please Login first"
+        return redirect("/login")
+    student_id = request.form['StudentID']
+    file = request.files['imageFile']
+    if len(student_id) < 10 or not file:
+        session['message'] = "Please enter student id of at least 10 characters and file img"
+        return redirect("/register_face")
+    file_name = str(student_id) + ".jpg"
+    try:
+        file.save(os.path.join(app.config['UPLOAD_FOLDER'], file_name))
+        face_recognition.load_encoding_images("static/images/")
+        session['message'] = "Face uploaded successfully"
+        return redirect("/register_face")
+    except:
+        if os.path.exists("static/images/" + file_name):
+            os.remove("static/images/" + file_name)
+        face_recognition.load_encoding_images("static/images/")
+        session['message'] = "Face upload failed"
+        return redirect("/register_face")
+
+
+@app.route('/remove_face_api', methods=['POST'])
+def remove_face_api():
+    is_admin = session.get("is_admin", False)
+    if not is_admin:
+        session['message'] = "Please Login first"
         return redirect("/login")
     try:
-        student_id = request.form['StudentID']
-        file = request.files['imageFile']
-        if len(student_id) < 10 or not file:
-            session['status'] = False
+        image_name = request.form['image_name']
+        image_path = os.path.join('static/images', image_name)
+        if os.path.exists(image_path):
+            os.remove(image_path)
+        face_recognition.load_encoding_images("static/images/")
+        print(image_name.split('.')[0])
+        is_delete = room_access_history.delete_many({"name": image_name.split('.')[0]})
+        if not is_delete:
+            session['message'] = "Failed to delete face"
             return redirect("/register_face")
-        file_name = str(student_id) + ".jpg"
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], file_name))
-        try:
-            face_recognition.load_encoding_images("image/")
-            session['status'] = True
-            return redirect("/register_face")
-        except:
-            if os.path.exists("image/" + file_name):
-                os.remove("image/" + file_name)
-                face_recognition.load_encoding_images("image/")
-            session['status'] = False
-            return redirect("/register_face")
+        session['message'] = "Successfully deleted face"
+        return redirect("/register_face")
     except:
-        session['status'] = "failed"
+        face_recognition.load_encoding_images("static/images/")
+        session['message'] = "Failed to delete face"
         return redirect("/register_face")
 
 
@@ -97,25 +118,26 @@ def register_face_api():
 def check_face_api():
     try:
         if 'imageFile' not in request.files:
-            return make_response(jsonify({"message": "please send file"}), 400)
+            return make_response('', 400)
         file = request.files['imageFile']
         student_id = face_recognition.detect_known_faces(file)
         if not student_id:
-            return make_response(jsonify({"message": "not have your face in database"}), 404)
+            return make_response('', 404)
         is_save = room_access_history.insert_one({"name": student_id, "datetime": datetime.now()})
         if not is_save:
-            return make_response(jsonify({"message": "have somthing error"}), 400)
-        return make_response(jsonify({"message": "have your face in database"}), 200)
+            return make_response('', 400)
+        return make_response('', 200)
     except:
-        return make_response(jsonify({"message": "have somthing error"}), 400)
+        return make_response('', 400)
 
 
 @app.errorhandler(404)
 def page_not_found(error):
     is_admin = session.get("is_admin", False)
     if not is_admin:
-        session['authentication_message'] = True
+        session['message'] = "Please Login first"
         return redirect("/login")
+    session['message'] = "This page does not exist"
     return redirect("/room_access_history")
 
 

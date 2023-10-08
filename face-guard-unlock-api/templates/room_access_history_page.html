@@ -26,5 +26,13 @@
             {% endfor %}
         </tbody>
     </table>
+    <script>
+        window.onload = function() {
+        let isAleart = "{{ message }}";
+            if (isAleart != "False") {
+                alert(isAleart);
+            }
+        };
+    </script>
 </body>
 </html>

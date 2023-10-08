@@ -21,7 +21,7 @@ class SimpleFacerec:
         # Load Images
         images_path = glob.glob(os.path.join(images_path, "*.*"))
 
-        # Store image encoding and names
+        # Store images encoding and names
         for img_path in images_path:
             img = cv2.imread(img_path)
             rgb_img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)

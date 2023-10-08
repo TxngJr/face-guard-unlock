@@ -23,13 +23,19 @@
             <input type="submit">
         </div>
    </form>
-<script>
+    {% for image in image_list %}
+                <form action="/remove_face_api" method="post" enctype="multipart/form-data">
+                    <img src="{{ url_for('static', filename='images/' + image) }}" alt="{{ image }}">
+                    <p>{{ image.split('.')[0] }}</p>
+                    <input type="hidden" name="image_name" value="{{ image }}">
+                    <button type="submit">Remove</button>
+                </form>
+    {% endfor %}
+    <script>
         window.onload = function() {
-        let isAleart = "{{ status }}";
-            if (isAleart == "True") {
-                alert("uploaded successfully");
-            }else if (isAleart == "False"){
-                alert("upload failed");
+        let isAleart = "{{ message }}";
+            if (isAleart != "False") {
+                alert(isAleart);
             }
         };
     </script>

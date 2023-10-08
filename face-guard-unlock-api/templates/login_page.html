@@ -24,12 +24,16 @@
         </div>
    </form>
     <script>
+        let isAdmin = "{{is_admin}}";
+        let auth = document.getElementById("auth");
+        if (isAdmin == "False") {
+            auth.innerHTML = '<a href="login">login</a>';
+        }
+
         window.onload = function() {
-        let isAleart = "{{ authentication_message }}";
-            if (isAleart == "True") {
-                alert("Pls Login First");
-            }else if (isAleart == "False"){
-                alert("username or password wrong");
+        let isAleart = "{{ message }}";
+            if (isAleart != "False") {
+                alert(isAleart);
             }
         };
     </script>

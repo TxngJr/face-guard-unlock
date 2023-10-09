@@ -70,24 +70,24 @@ def register_face_api():
     if not is_admin:
         session['message'] = "Please Login first"
         return redirect("/login")
-    student_id = request.form['StudentID']
-    file = request.files['imageFile']
-    if len(student_id) < 10 or not file:
-        session['message'] = "Please enter student id of at least 10 characters and file img"
-        return redirect("/register_face")
-    file_name = str(student_id) + ".jpg"
-    try:
-        file.save(os.path.join(app.config['UPLOAD_FOLDER'], file_name))
-        face_recognition.load_encoding_images("static/images/")
-        session['message'] = "Face uploaded successfully"
-        return redirect("/register_face")
-    except:
-        if os.path.exists("static/images/" + file_name):
-            os.remove("static/images/" + file_name)
-        face_recognition.load_encoding_images("static/images/")
-        session['message'] = "Face upload failed"
-        return redirect("/register_face")
-
+    uploaded_files = request.files.getlist('imageFile')
+    failed_files = []
+    for file in uploaded_files:
+        if file.filename != '':
+            try:
+                file.save(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
+                face_recognition.load_encoding_images("static/images/")
+                session['message'] = "Face uploaded successfully"
+            except:
+                if os.path.exists("static/images/" + file.filename):
+                    os.remove("static/images/" + file.filename)
+                face_recognition.load_encoding_images("static/images/")
+                failed_files.append(file.filename)
+    if failed_files:
+        session['message'] = "Some files failed to upload: {}".format(', '.join(failed_files))
+    else:
+        session['message'] = "All files uploaded successfully!"
+    return redirect("/register_face")
 
 @app.route('/remove_face_api', methods=['POST'])
 def remove_face_api():

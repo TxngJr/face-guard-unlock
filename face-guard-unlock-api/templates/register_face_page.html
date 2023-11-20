@@ -12,12 +12,8 @@
     {% include 'navbar.html' %}
     <form action="/register_face_api" method="post" enctype="multipart/form-data">
         <div>
-            <label for="StudentID">StudentID:</label>
-            <input type="number" id="StudentID" name="StudentID">
-        </div>
-        <div>
             <label for="imageFile">StudentID:</label>
-            <input type="file" id="imageFile" name="imageFile" accept="image/jpeg">
+            <input type="file" id="imageFile" name="imageFile" accept="image/jpeg" multiple>
         </div>
         <div>
             <input type="submit">
@@ -25,7 +21,9 @@
    </form>
     {% for image in image_list %}
                 <form action="/remove_face_api" method="post" enctype="multipart/form-data">
-                    <img src="{{ url_for('static', filename='images/' + image) }}" alt="{{ image }}">
+                    <div class="image-container">
+                        <img src="{{ url_for('static', filename='images/' + image) }}" alt="{{ image }}">
+                    </div>
                     <p>{{ image.split('.')[0] }}</p>
                     <input type="hidden" name="image_name" value="{{ image }}">
                     <button type="submit">Remove</button>

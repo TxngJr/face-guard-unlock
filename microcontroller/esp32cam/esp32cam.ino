@@ -4,10 +4,10 @@
 #include "soc/rtc_cntl_reg.h"
 #include "esp_camera.h"
 
-const char* ssid = "TongTey 2.4G";
-const char* password = "0943712194";
-const char* serverName = "192.168.1.45";
-const int serverPort = 25565;
+const char* ssid = "@UTC_WiFi";
+const char* password = "";
+const char* serverName = "nodered.utc.ac.th";
+const int serverPort = 3000;
 
 WiFiClient client;
 
@@ -28,10 +28,16 @@ WiFiClient client;
 #define HREF_GPIO_NUM 23
 #define PCLK_GPIO_NUM 22
 
+#define RELAY_PIN 12
+#define IR 13
+
 const int timerInterval = 2000;
 unsigned long previousMillis = 0;
 
 void setup() {
+  pinMode(RELAY_PIN, OUTPUT);
+  pinMode(IR, INPUT);
+
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
   Serial.begin(115200);
 
@@ -86,18 +92,25 @@ void setup() {
     delay(1000);
     ESP.restart();
   }
-
 }
 
 void loop() {
   unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= timerInterval) {
-    sendPhoto();
+  if (currentMillis - previousMillis >= timerInterval && !digitalRead(IR)) {
+    bool checkStatus = sendPhoto();
+    // Serial.println(checkStatus);
+    if (checkStatus) {
+      digitalWrite(RELAY_PIN, LOW);
+      delay(5000);
+    }
     previousMillis = currentMillis;
+  } else {
+    digitalWrite(RELAY_PIN, HIGH);
   }
 }
 
-void sendPhoto() {
+bool sendPhoto() {
+  bool checkStatus = false;
   camera_fb_t* fb = esp_camera_fb_get();
   if (!fb) {
     Serial.println("Camera capture failed");
@@ -146,24 +159,24 @@ void sendPhoto() {
       delay(100);
       while (client.available()) {
         char c = client.read();
+        // Serial.print(c);
         responseHeader += c;
         startTimer = millis();
       }
     }
 
-    if (responseHeader.startsWith("HTTP/1.1")) {
-      int statusCode = responseHeader.substring(9, 12).toInt();
-      if (statusCode == 200) {
-        Serial.println("Request successful!");
-      } else {
-        Serial.println("Request failed with status code: " + String(statusCode));
-      }
+    bool statusCode = responseHeader.indexOf("HTTP/1.0 200 OK") != -1;
+      // Serial.println(statusCode);
+
+    if (statusCode) {
+      // Serial.println("Request successful!");
+      checkStatus = true;
     } else {
       Serial.println("Invalid HTTP response");
     }
-
     client.stop();
   } else {
     Serial.println("Connection to " + String(serverName) + " failed.");
   }
+  return checkStatus;
 }

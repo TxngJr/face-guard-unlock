@@ -30,12 +30,14 @@ WiFiClient client;
 
 #define RELAY_PIN 12
 #define IR 13
+#define BUZZER_PIN 15
 
 const int timerInterval = 2000;
 unsigned long previousMillis = 0;
 
 void setup() {
   pinMode(RELAY_PIN, OUTPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
   pinMode(IR, INPUT);
 
   WRITE_PERI_REG(RTC_CNTL_BROWN_OUT_REG, 0);
@@ -100,12 +102,15 @@ void loop() {
     bool checkStatus = sendPhoto();
     // Serial.println(checkStatus);
     if (checkStatus) {
-      digitalWrite(RELAY_PIN, LOW);
-      delay(5000);
+      digitalWrite(RELAY_PIN, HIGH);
+      digitalWrite(BUZZER_PIN, HIGH);
+      delay(1000);
+      digitalWrite(BUZZER_PIN, LOW);
+      delay(4000);
     }
     previousMillis = currentMillis;
   } else {
-    digitalWrite(RELAY_PIN, HIGH);
+    digitalWrite(RELAY_PIN, LOW);
   }
 }
 
@@ -166,10 +171,10 @@ bool sendPhoto() {
     }
 
     bool statusCode = responseHeader.indexOf("HTTP/1.0 200 OK") != -1;
-      // Serial.println(statusCode);
+
 
     if (statusCode) {
-      // Serial.println("Request successful!");
+      Serial.println("Request successful!");
       checkStatus = true;
     } else {
       Serial.println("Invalid HTTP response");

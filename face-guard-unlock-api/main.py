@@ -1,14 +1,14 @@
-from datetime import datetime
-from simple_facerec import SimpleFacerec
-from flask import Flask, request, jsonify, make_response, redirect, render_template, session
 import os
+import face_recognition
+from datetime import datetime
+from bson.binary import Binary
 from pymongo import MongoClient
+from flask import Flask, request, jsonify, make_response, redirect, render_template, session
+import numpy as np
 
 database = MongoClient('mongodb://localhost:27017/')['testkub']
-room_access_history = database.room_access_history
-
-face_recognition = SimpleFacerec()
-face_recognition.load_encoding_images("static/images/")
+room_access_history_collection = database.room_access_history
+face_collection = database.face
 
 app = Flask(__name__)
 app.secret_key = '432rkjk34htht34f'
@@ -48,7 +48,7 @@ def room_access_history_page():
     if not is_admin:
         session['message'] = "Please Login first"
         return redirect("/login")
-    room_access_history_all = list(room_access_history.find({}))
+    room_access_history_all = list(room_access_history_collection.find({}))
     message = session.pop("message", False)
     return render_template('room_access_history_page.html', data=room_access_history_all, message=message)
 
@@ -76,12 +76,17 @@ def register_face_api():
         if file.filename != '':
             try:
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
-                face_recognition.load_encoding_images("static/images/")
+                image = face_recognition.load_image_file(file)
+                encoding = face_recognition.face_encodings(image)[0]
+                document = {
+                    "image_id": file.filename,
+                    "embedding": Binary(encoding)
+                }
+                inserted_id = face_collection.insert_one(document).inserted_id
                 session['message'] = "Face uploaded successfully"
             except:
                 if os.path.exists("static/images/" + file.filename):
                     os.remove("static/images/" + file.filename)
-                face_recognition.load_encoding_images("static/images/")
                 failed_files.append(file.filename)
     if failed_files:
         session['message'] = "Some files failed to upload: {}".format(', '.join(failed_files))
@@ -100,16 +105,17 @@ def remove_face_api():
         image_path = os.path.join('static/images', image_name)
         if os.path.exists(image_path):
             os.remove(image_path)
-        face_recognition.load_encoding_images("static/images/")
-        print(image_name.split('.')[0])
-        is_delete = room_access_history.delete_many({"name": image_name.split('.')[0]})
-        if not is_delete:
+        is_delete_face = face_collection.delete_one({"image_id": image_name})
+        if not is_delete_face:
+            session['message'] = "Failed to delete face"
+            return redirect("/register_face")
+        is_delete_room_access_history = room_access_history_collection.delete_many({"name": image_name.split('.')[0]})
+        if not is_delete_room_access_history:
             session['message'] = "Failed to delete face"
             return redirect("/register_face")
         session['message'] = "Successfully deleted face"
         return redirect("/register_face")
     except:
-        face_recognition.load_encoding_images("static/images/")
         session['message'] = "Failed to delete face"
         return redirect("/register_face")
 
@@ -117,16 +123,21 @@ def remove_face_api():
 @app.route('/check_face_api', methods=['POST'])
 def check_face_api():
     try:
-        if 'imageFile' not in request.files:
-            return make_response('', 400)
         file = request.files['imageFile']
-        student_id = face_recognition.detect_known_faces(file)
-        if not student_id:
-            return make_response('', 404)
-        is_save = room_access_history.insert_one({"name": student_id, "datetime": datetime.now()})
-        if not is_save:
-            return make_response('', 400)
-        return make_response('', 200)
+
+        unknown_image = face_recognition.load_image_file(file)
+        unknown_encoding = face_recognition.face_encodings(unknown_image)[0]
+        documents = face_collection.find()
+
+        known_encodings = []
+        for doc in documents:
+            known_encodings.append(np.frombuffer(doc["embedding"]))
+        results = face_recognition.compare_faces(known_encodings, unknown_encoding)
+        print(results)
+        for i, matched in enumerate(results):
+            if matched:
+                return make_response('', 200)
+        return make_response('', 400)
     except:
         return make_response('', 400)
 
@@ -142,4 +153,4 @@ def page_not_found(error):
 
 
 if __name__ == '__main__':
-    app.run( port=25565)
+    app.run(debug=True)

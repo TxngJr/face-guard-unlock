@@ -1,10 +1,11 @@
 import os
+import cv2
+import numpy as np
 import face_recognition
 from datetime import datetime
 from bson.binary import Binary
 from pymongo import MongoClient
 from flask import Flask, request, jsonify, make_response, redirect, render_template, session
-import numpy as np
 
 database = MongoClient('mongodb://localhost:27017/')['testkub']
 room_access_history_collection = database.room_access_history
@@ -77,10 +78,14 @@ def register_face_api():
             try:
                 file.save(os.path.join(app.config['UPLOAD_FOLDER'], file.filename))
                 image = face_recognition.load_image_file(file)
-                encoding = face_recognition.face_encodings(image)[0]
+                small_image = cv2.resize(image, (0, 0), fx=0.25, fy=0.25)
+                rgb_small_image = cv2.cvtColor(small_image, cv2.COLOR_BGR2RGB)
+                face_locations = face_recognition.face_locations(rgb_small_image)
+                face_encodings = face_recognition.face_encodings(rgb_small_image, face_locations)[0]
+
                 document = {
                     "image_id": file.filename,
-                    "embedding": Binary(encoding)
+                    "embedding": Binary(face_encodings)
                 }
                 inserted_id = face_collection.insert_one(document).inserted_id
                 session['message'] = "Face uploaded successfully"
@@ -93,6 +98,7 @@ def register_face_api():
     else:
         session['message'] = "All files uploaded successfully!"
     return redirect("/register_face")
+
 
 @app.route('/remove_face_api', methods=['POST'])
 def remove_face_api():
@@ -124,22 +130,26 @@ def remove_face_api():
 def check_face_api():
     try:
         file = request.files['imageFile']
+        image = face_recognition.load_image_file(file)
+        small_image = cv2.resize(image, (0, 0), fx=0.25, fy=0.25)
+        rgb_small_image = cv2.cvtColor(small_image, cv2.COLOR_BGR2RGB)
 
-        unknown_image = face_recognition.load_image_file(file)
-        unknown_encoding = face_recognition.face_encodings(unknown_image)[0]
+        face_locations = face_recognition.face_locations(rgb_small_image)
+        face_encodings = face_recognition.face_encodings(rgb_small_image, face_locations)[0]
+
         documents = face_collection.find()
 
         known_encodings = []
         for doc in documents:
             known_encodings.append(np.frombuffer(doc["embedding"]))
-        results = face_recognition.compare_faces(known_encodings, unknown_encoding)
-        print(results)
-        for i, matched in enumerate(results):
-            if matched:
-                return make_response('', 200)
+        results = face_recognition.compare_faces(known_encodings, face_encodings)
+        matches = sum(1 for result in results if result)
+        print(matches)
+        if matches >= 13:
+            return make_response('', 200)
         return make_response('', 400)
     except:
-        return make_response('', 400)
+        return make_response('error', 400)
 
 
 @app.errorhandler(404)

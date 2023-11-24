@@ -146,6 +146,11 @@ def check_face_api():
         matches = sum(1 for result in results if result)
         print(matches)
         if matches >= 13:
+            document = {
+                "name": "chawan",
+                "datetime": datetime.now()
+            }
+            inserted = room_access_history_collection.insert_one(document).inserted_id
             return make_response('', 200)
         return make_response('', 400)
     except:
@@ -163,4 +168,4 @@ def page_not_found(error):
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=False,host='nodered.utc.ac.th', port=3000)

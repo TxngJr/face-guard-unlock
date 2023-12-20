@@ -30,9 +30,9 @@ WiFiClient client;
 
 #define RELAY_PIN 12
 #define IR 13
-#define BUZZER_PIN 15
+#define BUZZER_PIN 2
 
-const int timerInterval = 2000;
+const int timerInterval = 1000;
 unsigned long previousMillis = 0;
 
 void setup() {
@@ -97,18 +97,20 @@ void setup() {
 }
 
 void loop() {
-  unsigned long currentMillis = millis();
-  if (currentMillis - previousMillis >= timerInterval && !digitalRead(IR)) {
+  // unsigned long currentMillis = millis();
+  if (!digitalRead(IR)) {
+    
     bool checkStatus = sendPhoto();
     // Serial.println(checkStatus);
     if (checkStatus) {
       digitalWrite(RELAY_PIN, HIGH);
-      digitalWrite(BUZZER_PIN, HIGH);
+      tone(BUZZER_PIN, 1000, 1000);
       delay(1000);
       digitalWrite(BUZZER_PIN, LOW);
       delay(4000);
+      digitalWrite(RELAY_PIN, LOW);
     }
-    previousMillis = currentMillis;
+    // previousMillis = currentMillis;
   } else {
     digitalWrite(RELAY_PIN, LOW);
   }
